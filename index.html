@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0a0f1e" />
+    <title>Kodama - Spirit Explorer</title>
+    <link rel="stylesheet" href="src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- HUD overlay -->
+      <div id="hud" class="hud">
+        <div class="hud-top">
+          <div class="hud-stat">
+            <span class="hud-icon">⚡</span>
+            <div class="hud-energy-bar">
+              <div id="energy-fill" class="energy-fill"></div>
+            </div>
+            <span id="energy-text" class="hud-value">50/200</span>
+          </div>
+          <div class="hud-center-title">KODAMA</div>
+          <div class="hud-stat hud-right">
+            <span class="hud-icon">✨</span>
+            <span id="spirit-count" class="hud-value">0</span>
+            <span class="hud-label">spirits</span>
+          </div>
+        </div>
+        <div class="hud-bottom-info">
+          <span id="level-display" class="level-badge">Lv.1</span>
+          <span id="distance-display" class="distance-text">0m explored</span>
+        </div>
+      </div>
+
+      <!-- Map container -->
+      <div id="map-container">
+        <div id="map"></div>
+        <canvas id="spirit-overlay"></canvas>
+      </div>
+
+      <!-- Spirit Radar -->
+      <div id="radar-container" class="radar-container">
+        <canvas id="radar-canvas" width="120" height="120"></canvas>
+        <div class="radar-label">RADAR</div>
+      </div>
+
+      <!-- Mock GPS Controls (shown when in mock mode) -->
+      <div id="mock-controls" class="mock-controls hidden">
+        <div class="mock-title">Mock GPS</div>
+        <div class="mock-grid">
+          <div></div>
+          <button class="mock-btn" id="mock-north">▲</button>
+          <div></div>
+          <button class="mock-btn" id="mock-west">◀</button>
+          <button class="mock-btn" id="mock-center">⊙</button>
+          <button class="mock-btn" id="mock-east">▶</button>
+          <div></div>
+          <button class="mock-btn" id="mock-south">▼</button>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Notification area -->
+      <div id="notifications" class="notifications"></div>
+
+      <!-- Spirit Modal -->
+      <div id="spirit-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+          <div id="modal-inner"></div>
+        </div>
+      </div>
+
+      <!-- Inventory Screen -->
+      <div id="inventory-screen" class="screen hidden">
+        <div class="screen-header">
+          <h2>Spirit Collection</h2>
+          <button id="inventory-close" class="close-btn">✕</button>
+        </div>
+        <div id="inventory-grid" class="inventory-grid"></div>
+      </div>
+
+      <!-- Exploration Screen -->
+      <div id="explore-screen" class="screen hidden">
+        <div class="screen-header">
+          <h2>Exploration</h2>
+          <button id="explore-close" class="close-btn">✕</button>
+        </div>
+        <div id="explore-content" class="explore-content"></div>
+      </div>
+
+      <!-- Profile Screen -->
+      <div id="profile-screen" class="screen hidden">
+        <div class="screen-header">
+          <h2>Explorer Profile</h2>
+          <button id="profile-close" class="close-btn">✕</button>
+        </div>
+        <div id="profile-content" class="profile-content"></div>
+      </div>
+
+      <!-- Bottom Navigation -->
+      <nav class="bottom-nav">
+        <button class="nav-btn active" data-screen="map">
+          <span class="nav-icon">🗺️</span>
+          <span class="nav-label">Map</span>
+        </button>
+        <button class="nav-btn" data-screen="spirits">
+          <span class="nav-icon">✨</span>
+          <span class="nav-label">Spirits</span>
+        </button>
+        <button class="nav-btn" data-screen="explore">
+          <span class="nav-icon">🧭</span>
+          <span class="nav-label">Explore</span>
+        </button>
+        <button class="nav-btn" data-screen="profile">
+          <span class="nav-icon">👤</span>
+          <span class="nav-label">Profile</span>
+        </button>
+      </nav>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
