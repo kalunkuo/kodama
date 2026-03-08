@@ -1,5 +1,4 @@
 import type { SpiritManager, Spirit } from './SpiritManager';
-import type { EventBus } from '../core/EventBus';
 import type { Coordinates } from '../player/GPSService';
 import { getRandomSpiritType } from './SpiritTypes';
 
@@ -10,13 +9,14 @@ export class SpiritSpawner {
   private readonly SPAWN_RADIUS_MIN = 50;
   private readonly SPAWN_RADIUS_MAX = 100;
   private spawnTimer = 0;
-  private readonly SPAWN_INTERVAL = 15;
+  /** Seconds between spawn attempts */
+  private readonly SPAWN_INTERVAL_SECONDS = 15;
 
-  constructor(private spiritManager: SpiritManager, private _eventBus: EventBus) {}
+  constructor(private spiritManager: SpiritManager) {}
 
   update(delta: number, playerPosition: Coordinates): void {
     this.spawnTimer += delta;
-    if (this.spawnTimer >= this.SPAWN_INTERVAL) {
+    if (this.spawnTimer >= this.SPAWN_INTERVAL_SECONDS) {
       this.spawnTimer = 0;
       this.trySpawn(playerPosition);
     }

@@ -38,7 +38,7 @@ async function main() {
   const mapManager = new MapManager('map');
 
   const spiritManager = new SpiritManager(eventBus);
-  const spiritSpawner = new SpiritSpawner(spiritManager, eventBus);
+  const spiritSpawner = new SpiritSpawner(spiritManager);
 
   const threeScene = new THREE.Scene();
   spiritManager.init(threeScene);
@@ -47,7 +47,7 @@ async function main() {
   hud.init();
   const spiritModal = new SpiritModal(eventBus);
   spiritModal.init();
-  const inventoryScreen = new InventoryScreen(eventBus);
+  const inventoryScreen = new InventoryScreen();
   inventoryScreen.init();
   const spiritRadar = new SpiritRadar();
   spiritRadar.init();

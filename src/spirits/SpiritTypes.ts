@@ -77,15 +77,18 @@ export const SPIRIT_TYPES: SpiritType[] = [
 
 export function getRandomSpiritType(): SpiritType {
   const rand = Math.random();
-  let spirits: SpiritType[];
+  let rarity: SpiritRarity;
   if (rand < 0.6) {
-    spirits = SPIRIT_TYPES.filter(s => s.rarity === 'common');
+    rarity = 'common';
   } else if (rand < 0.85) {
-    spirits = SPIRIT_TYPES.filter(s => s.rarity === 'rare');
+    rarity = 'rare';
   } else if (rand < 0.97) {
-    spirits = SPIRIT_TYPES.filter(s => s.rarity === 'epic');
+    rarity = 'epic';
   } else {
-    spirits = SPIRIT_TYPES.filter(s => s.rarity === 'legendary');
+    rarity = 'legendary';
   }
-  return spirits[Math.floor(Math.random() * spirits.length)];
+  const spirits = SPIRIT_TYPES.filter(s => s.rarity === rarity);
+  // Fallback to all spirits if a rarity tier has no entries
+  const pool = spirits.length > 0 ? spirits : SPIRIT_TYPES;
+  return pool[Math.floor(Math.random() * pool.length)];
 }

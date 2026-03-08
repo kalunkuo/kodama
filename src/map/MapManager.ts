@@ -2,7 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import type { Coordinates } from '../player/GPSService';
 import type { Spirit } from '../spirits/SpiritManager';
 
-const MAPBOX_TOKEN = 'YOUR_MAPBOX_TOKEN';
+const MAPBOX_TOKEN = import.meta.env['VITE_MAPBOX_TOKEN'] ?? '';
 
 export class MapManager {
   private map: mapboxgl.Map | null = null;
@@ -13,7 +13,7 @@ export class MapManager {
   constructor(private containerId: string) {}
 
   async init(center: [number, number]): Promise<void> {
-    if (MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN') {
+    if (!MAPBOX_TOKEN) {
       console.warn('Mapbox token not configured. Using fallback background.');
       this.initFallback(center);
       return;

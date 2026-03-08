@@ -1,4 +1,3 @@
-import type { EventBus } from '../core/EventBus';
 import type { Spirit } from '../spirits/SpiritManager';
 import type { SpiritRarity, SpiritElement } from '../spirits/SpiritTypes';
 
@@ -6,7 +5,7 @@ export class InventoryScreen {
   private container!: HTMLElement;
   private visible = false;
 
-  constructor(private _eventBus: EventBus) {}
+  constructor() {}
 
   init(): void {
     this.container = document.getElementById('inventory-screen')!;

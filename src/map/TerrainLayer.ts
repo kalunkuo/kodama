@@ -120,6 +120,6 @@ export class TerrainLayer {
   }
 
   update(_center: Coordinates): void {
-    // Camera follows player - handled by Mapbox camera
+    // Camera follows player via Mapbox camera — no additional update needed here
   }
 }
