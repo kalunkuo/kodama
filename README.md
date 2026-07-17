@@ -4,19 +4,53 @@
 
 A Pikmin/Pokémon-style creature-herding browser game set in Central Park's Ramble. Built on Phaser 4 + TypeScript + Vite.
 
+**Play it:** https://kalunkuo.github.io/kodama/
+
 **Status:** M0–M5 complete — playable v1. Real OSM tilemap of the Ramble (paths, woodland, lawns, the Lake), tap-to-move with A*, a 40-creature steering swarm, a real-calendar spawner driven by iNaturalist week-of-year histograms, shrinking-ring capture, a field-guide dex with seasonality sparklines, whistle/throw/carry verbs, localStorage persistence, GPS park mode with on-site spawn bonuses (dusk raccoon is Ramble-only), and offline-capable PWA build.
 
-See `game/` for the app. Run `npm install && npm run dev` inside `game/` to start the dev server (`npm run build` needs Node 18+; on Node 18 the build script auto-enables `--experimental-global-webcrypto`).
+## How to play
 
-Debug URL params for testing seasonality without waiting for the calendar: `?week=18&period=dusk&zone=ramble`.
+- **Tap the ground** to walk there.
+- **Tap a wild creature** to approach and start the capture ring — tap again when the shrinking ring lands inside the green band.
+- **Hold** anywhere to whistle: creatures in the expanding radius break off whatever they're doing and return to your swarm.
+- **Tap an acorn** to throw the nearest swarm member at it; once enough creatures are attached it carries itself back to the base flag.
+- **📖 Dex** shows every species as a grid — tap a cell for details, including season-by-week charts for species you haven't caught yet (so you know when/where to look).
+- **📍 Park mode** turns on GPS. Standing in the actual Ramble boosts spawn rates and unlocks on-site-only species (a dusk raccoon).
+
+Spawns follow the real calendar and time of day — a species with a spring peak will be rare in fall, and dusk/night species won't appear at noon.
+
+### Resetting your save
+
+Progress (dex, swarm roster, offerings) lives in your browser's `localStorage` under the key `ramble_save_v1`. To reset:
+
+```js
+localStorage.removeItem('ramble_save_v1');
+location.reload();
+```
+Paste that in the browser DevTools console (or as `javascript:localStorage.clear();location.reload()` in the address bar). To also clear the offline PWA cache, use your browser's "clear site data" for the page.
+
+### Debug URL params
+
+Useful for testing without waiting on the real calendar or GPS — works on any deployment, including the live GitHub Pages site:
+
+| Param | Values | Effect |
+|---|---|---|
+| `week` | `0`–`51` | Force the spawner's week-of-year (overrides the real date) |
+| `period` | `dawn` \| `day` \| `dusk` \| `night` | Force the time-of-day gate |
+| `zone` | `ramble` \| `central_park` | Force GPS zone without enabling real location (also flips onsite-only gating and the dex's field-verified badge) |
+
+Example: `https://kalunkuo.github.io/kodama/?zone=ramble&period=day`
+
+## For contributors
+
+See [DEVELOPING.md](DEVELOPING.md) for local setup, environment quirks (Node 18 build flags), architecture, the data pipeline, and deployment mechanics. The original design doc is [docs/ramble-implementation-plan.md](docs/ramble-implementation-plan.md).
 
 All art and audio are procedurally generated (no assets to license). Attribution: see [CREDITS.md](CREDITS.md).
 
 ## Deployment
 
 Every push to `main` builds and publishes the game to **GitHub Pages** via
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). The live URL is
-`https://kalunkuo.github.io/kodama/`.
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 
 One-time setup (repo **Settings → Pages → Build and deployment → Source: GitHub Actions**).
 Note: GitHub Pages on a **private** repo needs a paid plan — if this repo is
@@ -24,4 +58,3 @@ private and not on one, make it public or deploy elsewhere.
 
 The Vite `base` is `/kodama/` for the project Pages path. For a custom domain
 (served at the root) build with `VITE_BASE=/ npm run build`.
-
