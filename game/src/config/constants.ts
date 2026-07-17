@@ -24,8 +24,8 @@ export const THROW_DURATION_MS = 450;
 export const THROW_ARC_HEIGHT = 28; // px
 
 // Spawner (plan §7)
-export const SPAWN_TICK_MS = 20_000;
-export const MAX_WILD = 8;
+export const SPAWN_TICK_MS = 15_000;
+export const MAX_WILD = 16;
 export const SPAWN_NEAR_TILES = 42; // prefer tiles within this radius of the player
 export const DESPAWN_MS_MIN = 75_000;
 export const DESPAWN_MS_MAX = 140_000;
