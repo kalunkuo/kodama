@@ -6,6 +6,7 @@ import {
   DISTRACT_BAND_BONUS,
 } from '../config/constants';
 import { SpeciesDef, tintOf } from '../config/species-sprites';
+import { THEME } from '../ui/kit';
 
 export interface CaptureRequest {
   speciesDef: SpeciesDef;
@@ -47,30 +48,33 @@ export class CaptureGame {
     const cy = height / 2 - 30;
 
     const dim = this.scene.add
-      .rectangle(0, 0, width, height, 0x000000, 0.55)
+      .rectangle(0, 0, width, height, THEME.scrimFill, 0.6)
       .setOrigin(0)
       .setInteractive();
     dim.on('pointerdown', () => this.tap());
+    const rarityColor = { common: 0x8fb573, uncommon: 0xe6c15a, rare: 0xe08a4c }[def.rarity];
+    const halo = this.scene.add.graphics();
+    halo.fillStyle(rarityColor, 0.1).fillCircle(cx, cy, CAPTURE_RING_START + 8);
     const creature = this.scene.add
       .image(cx, cy, def.sprite.base)
       .setTint(tintOf(def))
       .setScale(4);
     const name = this.scene.add
-      .text(cx, cy + CAPTURE_RING_START + 34, def.common_name, {
-        fontFamily: 'sans-serif',
-        fontSize: '18px',
-        color: '#e8e6d8',
+      .text(cx, cy + CAPTURE_RING_START + 42, def.common_name, {
+        fontFamily: THEME.serif,
+        fontSize: '20px',
+        color: THEME.ink,
       })
       .setOrigin(0.5);
     const hint = this.scene.add
-      .text(cx, cy + CAPTURE_RING_START + 58, 'tap when the ring is in the band', {
-        fontFamily: 'sans-serif',
+      .text(cx, cy + CAPTURE_RING_START + 68, 'tap when the ring meets the band', {
+        fontFamily: THEME.sans,
         fontSize: '12px',
-        color: '#9aa08a',
+        color: THEME.inkMuted,
       })
       .setOrigin(0.5);
     this.gfx = this.scene.add.graphics();
-    this.objects = [dim, creature, name, hint, this.gfx];
+    this.objects = [dim, halo, creature, name, hint, this.gfx];
   }
 
   update(deltaMs: number): void {
@@ -88,11 +92,15 @@ export class CaptureGame {
     const cy = height / 2 - 30;
     this.gfx.clear();
     // the hit band
-    this.gfx.lineStyle(this.band.outer - this.band.inner, 0x8fd14f, 0.28);
-    this.gfx.strokeCircle(cx, cy, (this.band.inner + this.band.outer) / 2);
-    // the shrinking ring
     const inBand = this.radius >= this.band.inner && this.radius <= this.band.outer;
-    this.gfx.lineStyle(3, inBand ? 0xffe9a8 : 0xffffff, 1);
+    this.gfx.lineStyle(this.band.outer - this.band.inner, 0x8fd14f, inBand ? 0.42 : 0.26);
+    this.gfx.strokeCircle(cx, cy, (this.band.inner + this.band.outer) / 2);
+    // the shrinking ring — glows gold when it's over the band
+    if (inBand) {
+      this.gfx.lineStyle(7, 0xffe9a8, 0.25);
+      this.gfx.strokeCircle(cx, cy, this.radius);
+    }
+    this.gfx.lineStyle(3, inBand ? 0xffe9a8 : 0xf4efe0, 1);
     this.gfx.strokeCircle(cx, cy, this.radius);
   }
 

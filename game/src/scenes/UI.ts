@@ -2,19 +2,24 @@ import Phaser from 'phaser';
 import { SWARM_CAP } from '../config/constants';
 import { audio } from '../systems/Audio';
 import { CaptureGame, CaptureRequest } from '../systems/Capture';
+import { Chip, PillButton, THEME, drawPanel, safeInsets, Insets } from '../ui/kit';
 import type { Park } from './Park';
-
-const FONT = 'sans-serif';
 
 export class UI extends Phaser.Scene {
   private capture!: CaptureGame;
-  private swarmChip!: Phaser.GameObjects.Text;
-  private offeringsChip!: Phaser.GameObjects.Text;
-  private zoneChip!: Phaser.GameObjects.Text;
+  private statChip!: Chip;
+  private zoneChip!: Chip;
+  private dexBtn!: PillButton;
+  private parkBtn!: PillButton;
+  private creditsBtn!: PillButton;
+  private hint!: Phaser.GameObjects.Container;
+  private toastBox!: Phaser.GameObjects.Container;
+  private toastBg!: Phaser.GameObjects.Graphics;
   private toastText!: Phaser.GameObjects.Text;
   private toastQueue: string[] = [];
   private toastBusy = false;
   private creditsPanel: Phaser.GameObjects.Container | null = null;
+  private insets!: Insets;
 
   constructor() {
     super('UI');
@@ -26,17 +31,19 @@ export class UI extends Phaser.Scene {
 
   create(): void {
     this.capture = new CaptureGame(this);
+    this.insets = safeInsets();
 
-    this.swarmChip = this.chip(12, 12, '');
-    this.offeringsChip = this.chip(12, 44, '');
-    this.zoneChip = this.chip(12, 76, '').setVisible(false);
+    // top-left status cluster
+    this.statChip = new Chip(this, 0, 0, '');
+    this.zoneChip = new Chip(this, 0, 0, '').setVisible(false);
 
-    const dexBtn = this.button(0, 12, '📖 Dex', () => {
+    // top-right controls
+    this.dexBtn = new PillButton(this, 0, 0, '📖  Dex', () => {
       audio.unlock();
       if (this.scene.isActive('Dex')) this.scene.stop('Dex');
       else this.scene.launch('Dex');
     });
-    const parkBtn = this.button(0, 52, '📍 Park mode', () => {
+    this.parkBtn = new PillButton(this, 0, 0, '📍  Park mode', () => {
       audio.unlock();
       const loc = this.park().location;
       if (loc.enabled) {
@@ -47,45 +54,15 @@ export class UI extends Phaser.Scene {
         this.toast('Park mode: locating…');
       }
     });
-    const creditsBtn = this.button(0, 92, 'ⓘ', () => this.toggleCredits());
-    const layout = () => {
-      const w = this.scale.width;
-      dexBtn.setX(w - dexBtn.width - 12);
-      parkBtn.setX(w - parkBtn.width - 12);
-      creditsBtn.setX(w - creditsBtn.width - 12);
-      this.toastText.setX(w / 2);
-      hint.setPosition(w / 2, this.scale.height - 16);
-    };
+    this.creditsBtn = new PillButton(this, 0, 0, 'ⓘ  About', () => this.toggleCredits());
 
-    this.toastText = this.add
-      .text(this.scale.width / 2, 118, '', {
-        fontFamily: FONT,
-        fontSize: '14px',
-        color: '#ffe9a8',
-        backgroundColor: '#00000099',
-        padding: { x: 10, y: 5 },
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(10)
-      .setVisible(false);
-
-    const hint = this.add
-      .text(
-        this.scale.width / 2,
-        this.scale.height - 16,
-        'tap: move / catch · tap acorn: throw · hold: whistle',
-        {
-          fontFamily: FONT,
-          fontSize: '12px',
-          color: '#9aa08a',
-          backgroundColor: '#00000066',
-          padding: { x: 8, y: 4 },
-        }
-      )
-      .setOrigin(0.5, 1);
-
-    layout();
-    this.scale.on('resize', layout);
+    this.buildToast();
+    this.buildHint();
+    this.layout();
+    this.scale.on('resize', () => {
+      this.insets = safeInsets();
+      this.layout();
+    });
 
     this.game.events.on('capture:start', (req: CaptureRequest) => {
       this.capture.start({
@@ -97,33 +74,55 @@ export class UI extends Phaser.Scene {
       });
     });
     this.game.events.on('toast', (msg: string) => this.toast(msg));
-  }
 
-  private chip(x: number, y: number, text: string): Phaser.GameObjects.Text {
-    return this.add.text(x, y, text, {
-      fontFamily: FONT,
-      fontSize: '14px',
-      color: '#e8e6d8',
-      backgroundColor: '#00000099',
-      padding: { x: 10, y: 5 },
+    // fade the control hint out after the first few seconds
+    this.time.delayedCall(7000, () => {
+      this.tweens.add({ targets: this.hint, alpha: 0, duration: 800 });
     });
   }
 
-  private button(x: number, y: number, label: string, onTap: () => void): Phaser.GameObjects.Text {
-    const btn = this.add
-      .text(x, y, label, {
-        fontFamily: FONT,
-        fontSize: '15px',
-        color: '#e8e6d8',
-        backgroundColor: '#2c3626ee',
-        padding: { x: 12, y: 7 },
+  private layout(): void {
+    const w = this.scale.width;
+    const { top, left, right, bottom } = this.insets;
+
+    this.statChip.setPosition(left, top);
+    this.zoneChip.setPosition(left, top + 40);
+
+    const btnX = (btn: PillButton) => w - right - btn.width;
+    this.dexBtn.setX(btnX(this.dexBtn)).container.setY(top);
+    this.parkBtn.setX(btnX(this.parkBtn)).container.setY(top + 48);
+    this.creditsBtn.setX(btnX(this.creditsBtn)).container.setY(top + 96);
+
+    this.toastBox.setPosition(w / 2, top + 92);
+    this.hint.setPosition(w / 2, this.scale.height - bottom);
+  }
+
+  private buildToast(): void {
+    this.toastBg = this.add.graphics();
+    this.toastText = this.add
+      .text(0, 0, '', { fontFamily: THEME.sans, fontSize: '15px', color: THEME.gold, align: 'center' })
+      .setOrigin(0.5);
+    this.toastBox = this.add.container(0, 0, [this.toastBg, this.toastText]).setDepth(30).setVisible(false);
+  }
+
+  private buildHint(): void {
+    const bg = this.add.graphics();
+    const label = this.add
+      .text(0, 0, 'tap: move / catch   ·   tap 🌰: throw   ·   hold: whistle', {
+        fontFamily: THEME.sans,
+        fontSize: '12px',
+        color: THEME.inkMuted,
       })
-      .setInteractive({ useHandCursor: true });
-    btn.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
-      ev.stopPropagation();
-      onTap();
+      .setOrigin(0.5);
+    drawPanel(bg, label.width + 24, label.height + 12, {
+      x: -(label.width + 24) / 2,
+      y: -(label.height + 12),
+      radius: (label.height + 12) / 2,
+      alpha: 0.7,
+      stroke: THEME.panelStrokeSoft,
     });
-    return btn;
+    this.hint = this.add.container(0, 0, [bg, label]).setDepth(20);
+    label.setY(-(label.height + 12) / 2);
   }
 
   private toast(msg: string): void {
@@ -138,12 +137,18 @@ export class UI extends Phaser.Scene {
       return;
     }
     this.toastBusy = true;
-    this.toastText.setText(msg).setVisible(true).setAlpha(1);
-    this.time.delayedCall(1600, () => {
+    this.toastText.setText(msg);
+    const w = this.toastText.width + 28;
+    const h = this.toastText.height + 16;
+    this.toastBg.clear();
+    drawPanel(this.toastBg, w, h, { x: -w / 2, y: -h / 2, radius: h / 2, alpha: 0.92, stroke: THEME.goldNum });
+    this.toastBox.setVisible(true).setAlpha(0).setScale(0.9);
+    this.tweens.add({ targets: this.toastBox, alpha: 1, scale: 1, duration: 180, ease: 'Back.easeOut' });
+    this.time.delayedCall(1700, () => {
       this.tweens.add({
-        targets: this.toastText,
+        targets: this.toastBox,
         alpha: 0,
-        duration: 300,
+        duration: 260,
         onComplete: () => this.nextToast(),
       });
     });
@@ -156,59 +161,67 @@ export class UI extends Phaser.Scene {
       return;
     }
     const { width, height } = this.scale;
-    const bg = this.add
-      .rectangle(0, 0, width, height, 0x101408, 0.92)
-      .setOrigin(0)
-      .setInteractive();
-    const text = this.add
+    const scrim = this.add.rectangle(0, 0, width, height, THEME.scrimFill, 0.93).setOrigin(0).setInteractive();
+
+    const title = this.add
+      .text(width / 2, height / 2 - 150, 'RAMBLE', {
+        fontFamily: THEME.serif,
+        fontSize: '38px',
+        color: THEME.gold,
+      })
+      .setOrigin(0.5);
+    const body = this.add
       .text(
         width / 2,
-        height / 2,
+        height / 2 - 96,
         [
-          'RAMBLE',
-          '',
           'A creature-herding game set in the Ramble,',
           'Central Park, New York.',
           '',
           'Map data © OpenStreetMap contributors (ODbL)',
           'openstreetmap.org/copyright',
           '',
-          'Species occurrence & seasonality data from',
-          'iNaturalist — inaturalist.org',
+          'Species occurrence & seasonality data',
+          'from iNaturalist — inaturalist.org',
           '',
           'All art & sound generated procedurally (CC0).',
-          '',
-          'tap anywhere to close',
         ].join('\n'),
         {
-          fontFamily: FONT,
+          fontFamily: THEME.sans,
           fontSize: '14px',
-          color: '#e8e6d8',
+          color: THEME.ink,
           align: 'center',
-          lineSpacing: 3,
+          lineSpacing: 5,
         }
       )
+      .setOrigin(0.5, 0);
+    const close = this.add
+      .text(width / 2, height / 2 + 150, 'tap anywhere to close', {
+        fontFamily: THEME.sans,
+        fontSize: '12px',
+        color: THEME.inkFaint,
+      })
       .setOrigin(0.5);
-    bg.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+
+    scrim.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
       ev.stopPropagation();
       this.toggleCredits();
     });
-    this.creditsPanel = this.add.container(0, 0, [bg, text]).setDepth(50);
+    this.creditsPanel = this.add.container(0, 0, [scrim, title, body, close]).setDepth(50);
   }
 
   update(_time: number, delta: number): void {
     this.capture.update(delta);
     const park = this.park();
     if (!park.swarm) return;
-    this.swarmChip.setText(`🐦 ${park.swarm.size}/${SWARM_CAP}`);
-    this.offeringsChip.setText(`🌰 ${park.save.data.offerings}`);
+    this.statChip.setText(`🐦 ${park.swarm.size}/${SWARM_CAP}    🌰 ${park.save.data.offerings}`);
     const loc = park.location;
     if (loc.enabled) {
       const label =
         loc.zone === 'ramble'
-          ? '📍 in the Ramble ×3'
+          ? '📍 in the Ramble  ×3'
           : loc.zone === 'central_park'
-            ? '📍 in Central Park ×2'
+            ? '📍 in Central Park  ×2'
             : '📍 offsite';
       this.zoneChip.setText(label).setVisible(true);
     } else if (loc.error) {
