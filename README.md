@@ -11,3 +11,17 @@ See `game/` for the app. Run `npm install && npm run dev` inside `game/` to star
 Debug URL params for testing seasonality without waiting for the calendar: `?week=18&period=dusk&zone=ramble`.
 
 All art and audio are procedurally generated (no assets to license). Attribution: see [CREDITS.md](CREDITS.md).
+
+## Deployment
+
+Every push to `main` builds and publishes the game to **GitHub Pages** via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). The live URL is
+`https://kalunkuo.github.io/kodama/`.
+
+One-time setup (repo **Settings → Pages → Build and deployment → Source: GitHub Actions**).
+Note: GitHub Pages on a **private** repo needs a paid plan — if this repo is
+private and not on one, make it public or deploy elsewhere.
+
+The Vite `base` is `/kodama/` for the project Pages path. For a custom domain
+(served at the root) build with `VITE_BASE=/ npm run build`.
+
