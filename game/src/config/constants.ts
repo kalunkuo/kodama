@@ -71,4 +71,13 @@ export const TILE_COLORS: Record<TileClass, number> = {
   rock: 0x8a8578,
 };
 
+// Ambient light per real time-of-day period (plan §2: the calendar is the content).
+// Screen-space overlay tint {color, alpha}; day is clear.
+export const TIME_TINT: Record<string, { color: number; alpha: number }> = {
+  dawn: { color: 0xffcf9e, alpha: 0.14 },
+  day: { color: 0xffffff, alpha: 0.0 },
+  dusk: { color: 0xff7a3c, alpha: 0.24 },
+  night: { color: 0x0a1445, alpha: 0.46 },
+};
+
 export const SAVE_KEY = 'ramble_save_v1';

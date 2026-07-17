@@ -9,6 +9,7 @@ import {
   WHISTLE_GROW_RATE,
   WHISTLE_HOLD_MS,
   WHISTLE_MAX_RADIUS,
+  TIME_TINT,
 } from '../config/constants';
 import { SpeciesDef } from '../config/species-sprites';
 import { CarryObject } from '../entities/CarryObject';
@@ -40,6 +41,8 @@ export class Park extends Phaser.Scene {
   private whistling = false;
   private whistleRadius = 0;
   private whistleGfx!: Phaser.GameObjects.Graphics;
+  private ambient!: Phaser.GameObjects.Rectangle;
+  private ambientPeriod = '';
 
   constructor() {
     super('Park');
@@ -82,6 +85,15 @@ export class Park extends Phaser.Scene {
     }
 
     this.whistleGfx = this.add.graphics().setDepth(2_000_000);
+
+    // day/night ambient tint — screen-space, under the whistle ring and HUD
+    this.ambient = this.add
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0)
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(1_400_000);
+    this.applyAmbient();
+    this.scale.on('resize', () => this.ambient.setSize(this.scale.width, this.scale.height));
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.grid.width * TILE_SIZE, this.grid.height * TILE_SIZE);
@@ -326,6 +338,15 @@ export class Park extends Phaser.Scene {
     }
   }
 
+  /** Recolor the ambient overlay when the real-clock period changes (cheap; skips per-frame churn). */
+  private applyAmbient(): void {
+    const period = this.spawner.period;
+    if (period === this.ambientPeriod) return;
+    this.ambientPeriod = period;
+    const tint = TIME_TINT[period] ?? TIME_TINT.day;
+    this.ambient.setFillStyle(tint.color, tint.alpha);
+  }
+
   private pursuitTargetDrift(): number {
     if (!this.pursuit) return 0;
     return Math.hypot(this.pursuit.x - this.pursuitGoal.x, this.pursuit.y - this.pursuitGoal.y);
@@ -338,6 +359,7 @@ export class Park extends Phaser.Scene {
   update(_time: number, rawDt: number): void {
     // clamp so a long frame (tab hidden, GC) never teleports entities
     const dtMs = Math.min(rawDt, 64);
+    this.applyAmbient();
     // hold long enough without moving → whistle starts
     const ptr = this.input.activePointer;
     if (
