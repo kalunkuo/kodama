@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import { SpeciesDef, tintOf } from '../config/species-sprites';
 import { currentWeek } from '../systems/Spawner';
-import { THEME, drawPanel, safeInsets } from '../ui/kit';
+import { THEME, pixelBox, pixelText, safeInsets } from '../ui/kit';
 import type { Park } from './Park';
 
-const ROW_H = 92;
+const ROW_H = 96;
 
 /**
  * Silhouette-until-caught (plan §7). Each entry shows the species' real
@@ -24,58 +24,34 @@ export class Dex extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
     const inset = safeInsets();
-    this.headerH = inset.top + 50;
+    this.headerH = inset.top + 52;
     const park = this.scene.get('Park') as Park;
     const species = this.registry.get('species') as SpeciesDef[];
     const dex = park.save.data.dex;
     const caught = Object.keys(dex).length;
 
-    const scrim = this.add.rectangle(0, 0, width, height, THEME.scrimFill, 0.97).setOrigin(0).setInteractive();
+    const scrim = this.add.rectangle(0, 0, width, height, THEME.scrim, 1).setOrigin(0).setInteractive();
 
-    // scrolling content (built first so it renders under the header)
     this.content = this.add.container(0, this.headerH).setDepth(1);
     species.forEach((def, i) => this.buildRow(def, dex[def.id], i, width));
-    this.maxScroll = Math.max(0, species.length * ROW_H - (height - this.headerH - inset.bottom));
+    this.maxScroll = Math.max(0, species.length * ROW_H + 10 - (height - this.headerH - inset.bottom));
 
     // fixed header
     const headerBg = this.add.graphics().setDepth(4);
-    drawPanel(headerBg, width + 4, this.headerH + 2, {
-      x: -2,
-      y: -2,
-      radius: 0,
-      fill: THEME.panelFillSolid,
-      alpha: 0.98,
-      stroke: THEME.panelStrokeSoft,
-    });
-    this.add
-      .text(inset.left + 4, inset.top + 6, 'Field Guide', {
-        fontFamily: THEME.serif,
-        fontSize: '24px',
-        color: THEME.ink,
-      })
-      .setDepth(5);
-    this.add
-      .text(inset.left + 5, inset.top + 32, `${caught} of ${species.length} recorded`, {
-        fontFamily: THEME.sans,
-        fontSize: '12px',
-        color: THEME.inkMuted,
-      })
-      .setDepth(5);
-    const close = this.add
-      .text(width - inset.right, inset.top + 4, '✕', {
-        fontFamily: THEME.sans,
-        fontSize: '24px',
-        color: THEME.inkMuted,
-      })
-      .setOrigin(1, 0)
+    pixelBox(headerBg, -3, -3, width + 6, this.headerH + 3, { fill: THEME.boxFillDark, alpha: 0.99 });
+    pixelText(this, inset.left + 4, inset.top + 4, 'FIELD GUIDE', { size: 24, tint: THEME.ink }).setDepth(5);
+    pixelText(this, inset.left + 5, inset.top + 32, `${caught} OF ${species.length} RECORDED`, {
+      size: 8,
+      tint: THEME.inkMuted,
+    }).setDepth(5);
+    const close = pixelText(this, width - inset.right - 4, inset.top + 6, 'X', { size: 24, tint: THEME.inkMuted, origin: [1, 0] })
       .setDepth(5)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive(new Phaser.Geom.Rectangle(-14, -8, 40, 40), Phaser.Geom.Rectangle.Contains);
     close.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
       ev.stopPropagation();
       this.scene.stop();
     });
 
-    // drag to scroll (tap without drag = no-op)
     scrim.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.dragStartY = p.y;
       this.scrollStart = this.content.y;
@@ -88,93 +64,72 @@ export class Dex extends Phaser.Scene {
   }
 
   private buildRow(def: SpeciesDef, entry: { caught_at: string; onsite: boolean } | undefined, i: number, width: number): void {
-    const y = i * ROW_H;
+    const y = i * ROW_H + 6;
     const caught = !!entry;
 
-    // card
     const card = this.add.graphics();
-    drawPanel(card, width - 20, ROW_H - 10, {
-      x: 10,
-      y: y + 5,
-      radius: 12,
-      fill: caught ? THEME.panelFill : THEME.panelFillSolid,
-      alpha: caught ? 0.55 : 0.32,
-      stroke: caught ? THEME.panelStroke : THEME.panelStrokeSoft,
+    pixelBox(card, 8, y, width - 16, ROW_H - 12, {
+      fill: caught ? THEME.boxFill : THEME.boxFillDark,
+      alpha: caught ? 0.9 : 0.6,
     });
     this.content.add(card);
 
-    // icon medallion
-    const medallion = this.add.graphics();
-    medallion.fillStyle(0x0e150a, 0.85);
-    medallion.fillCircle(46, y + ROW_H / 2, 24);
-    medallion.lineStyle(1, caught ? THEME.panelStroke : THEME.panelStrokeSoft, 1);
-    medallion.strokeCircle(46, y + ROW_H / 2, 24);
-    const icon = this.add.image(46, y + ROW_H / 2, def.sprite.base).setScale(2.4);
-    icon.setTint(caught ? tintOf(def) : 0x11150c);
-    this.content.add([medallion, icon]);
+    // square medallion + icon
+    const medX = 18;
+    const medY = y + 14;
+    const med = this.add.graphics();
+    pixelBox(med, medX, medY, 44, 44, { fill: THEME.boxFillDark });
+    const icon = this.add.image(medX + 22, medY + 22, def.sprite.base).setScale(2.6);
+    icon.setTint(caught ? tintOf(def) : 0x39432c); // faint silhouette until caught
+    this.content.add([med, icon]);
 
-    // name + rarity
-    const name = this.add.text(82, y + 16, caught ? def.common_name : '???', {
-      fontFamily: THEME.serif,
-      fontSize: '17px',
-      color: caught ? THEME.ink : THEME.inkFaint,
+    // name — one line, auto-shrunk if a long name would reach the sparkline
+    const name = pixelText(this, 74, y + 14, caught ? def.common_name : '? ? ?', {
+      size: 12,
+      tint: caught ? THEME.ink : THEME.inkFaint,
     });
-    const dots = { common: '●', uncommon: '● ●', rare: '● ● ●' }[def.rarity];
-    const rarity = this.add.text(83, y + 40, dots, {
-      fontFamily: THEME.sans,
-      fontSize: '9px',
-      color: THEME.rarity[def.rarity],
-    });
-    this.content.add([name, rarity]);
+    const avail = width - 116 - 74 - 4;
+    if (name.width > avail) name.setFontSize(12 * (avail / name.width));
+    this.content.add(name);
+
+    // rarity pips
+    const pipN = { common: 1, uncommon: 2, rare: 3 }[def.rarity];
+    const pips = this.add.graphics();
+    pips.fillStyle(THEME.rarity[def.rarity], 1);
+    for (let p = 0; p < pipN; p++) pips.fillRect(75 + p * 8, y + 34, 5, 5);
+    this.content.add(pips);
 
     if (caught) {
       const when = new Date(entry!.caught_at).toLocaleDateString();
-      const meta = this.add.text(112, y + 38, entry!.onsite ? `caught ${when}` : `caught ${when}`, {
-        fontFamily: THEME.sans,
-        fontSize: '11px',
-        color: THEME.inkMuted,
-      });
+      const meta = pixelText(this, 92, y + 33, `CAUGHT ${when}`, { size: 8, tint: THEME.inkMuted });
       this.content.add(meta);
       if (entry!.onsite) {
-        const badge = this.add.text(112 + meta.width + 8, y + 37, '✓ field-verified', {
-          fontFamily: THEME.sans,
-          fontSize: '11px',
-          color: THEME.green,
-        });
+        const badge = pixelText(this, 92 + meta.width + 8, y + 33, '@ VERIFIED', { size: 8, tint: THEME.green });
         this.content.add(badge);
       }
-      const blurb = this.add.text(18, y + 60, def.dex_blurb, {
-        fontFamily: THEME.sans,
-        fontSize: '11px',
-        color: '#c3c9b2',
-        wordWrap: { width: width - 140 },
-      });
+      const blurb = pixelText(this, 16, y + 52, def.dex_blurb, { size: 8, tint: 0xc3c9b2 });
+      blurb.setMaxWidth(width - 140);
       this.content.add(blurb);
     } else {
-      const hint = this.add.text(82, y + 58, 'not yet recorded', {
-        fontFamily: THEME.sans,
-        fontSize: '11px',
-        color: THEME.inkFaint,
-      });
-      this.content.add(hint);
+      const note = pixelText(this, 74, y + 50, 'NOT YET RECORDED', { size: 8, tint: THEME.inkFaint });
+      this.content.add(note);
     }
 
-    this.content.add(this.sparkline(def, width - 112, y + 16));
+    this.content.add(this.sparkline(def, width - 116, y + 10));
   }
 
   /** 52-week seasonality sparkline: filled area, line, and a gold marker on the current week. */
   private sparkline(def: SpeciesDef, x: number, y: number): Phaser.GameObjects.Container {
-    const W = 92;
+    const W = 96;
     const H = 34;
     const g = this.add.graphics();
-    drawPanel(g, W + 12, H + 22, { radius: 8, fill: 0x0e150a, alpha: 0.7, stroke: THEME.panelStrokeSoft });
+    pixelBox(g, 0, 0, W + 12, H + 24, { fill: THEME.boxFillDark });
 
     const ox = 6;
     const oy = 6;
     const pt = (w: number) => ({ x: ox + (w / 51) * W, y: oy + H - def.spawn_weight_by_week[w] * H });
 
-    // filled area under the curve
-    g.fillStyle(0x8fb573, 0.18);
+    g.fillStyle(0x8fb573, 0.2);
     g.beginPath();
     g.moveTo(ox, oy + H);
     for (let w = 0; w < 52; w++) {
@@ -185,7 +140,6 @@ export class Dex extends Phaser.Scene {
     g.closePath();
     g.fillPath();
 
-    // line
     g.lineStyle(1.5, 0x9fd07a, 0.95);
     g.beginPath();
     for (let w = 0; w < 52; w++) {
@@ -195,16 +149,11 @@ export class Dex extends Phaser.Scene {
     }
     g.strokePath();
 
-    // current-week marker
     const cw = currentWeek();
-    g.fillStyle(THEME.goldNum, 1);
+    g.fillStyle(THEME.gold, 1);
     g.fillRect(ox + (cw / 51) * W - 1, oy - 2, 2, H + 4);
 
-    const label = this.add.text(ox, oy + H + 4, 'Jan → Dec · now', {
-      fontFamily: THEME.sans,
-      fontSize: '8px',
-      color: THEME.inkFaint,
-    });
+    const label = pixelText(this, ox, oy + H + 5, 'JAN > DEC', { size: 8, tint: THEME.inkFaint });
     return this.add.container(x, y, [g, label]);
   }
 }

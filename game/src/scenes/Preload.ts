@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 // The contract (plan §4): the game reads only data/*.json, produced by the pipeline.
 import mapUrl from '../../../data/ramble_map.json?url';
 import speciesUrl from '../../../data/species.json?url';
+import { buildPixelFont } from '../ui/kit';
 
 type Px = [x: number, y: number, w: number, h: number, color: number];
 
@@ -148,6 +149,8 @@ export class Preload extends Phaser.Scene {
       g.destroy();
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
     }
+
+    buildPixelFont(this);
 
     // small round soft dot for whistle/marker effects
     const dot = this.add.graphics();

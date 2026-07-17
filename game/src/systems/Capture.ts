@@ -6,7 +6,7 @@ import {
   DISTRACT_BAND_BONUS,
 } from '../config/constants';
 import { SpeciesDef, tintOf } from '../config/species-sprites';
-import { THEME } from '../ui/kit';
+import { THEME, pixelText } from '../ui/kit';
 
 export interface CaptureRequest {
   speciesDef: SpeciesDef;
@@ -48,31 +48,27 @@ export class CaptureGame {
     const cy = height / 2 - 30;
 
     const dim = this.scene.add
-      .rectangle(0, 0, width, height, THEME.scrimFill, 0.6)
+      .rectangle(0, 0, width, height, THEME.scrim, 0.6)
       .setOrigin(0)
       .setInteractive();
     dim.on('pointerdown', () => this.tap());
-    const rarityColor = { common: 0x8fb573, uncommon: 0xe6c15a, rare: 0xe08a4c }[def.rarity];
+    const rarityColor = THEME.rarity[def.rarity];
     const halo = this.scene.add.graphics();
     halo.fillStyle(rarityColor, 0.1).fillCircle(cx, cy, CAPTURE_RING_START + 8);
     const creature = this.scene.add
       .image(cx, cy, def.sprite.base)
       .setTint(tintOf(def))
       .setScale(4);
-    const name = this.scene.add
-      .text(cx, cy + CAPTURE_RING_START + 42, def.common_name, {
-        fontFamily: THEME.serif,
-        fontSize: '20px',
-        color: THEME.ink,
-      })
-      .setOrigin(0.5);
-    const hint = this.scene.add
-      .text(cx, cy + CAPTURE_RING_START + 68, 'tap when the ring meets the band', {
-        fontFamily: THEME.sans,
-        fontSize: '12px',
-        color: THEME.inkMuted,
-      })
-      .setOrigin(0.5);
+    const name = pixelText(this.scene, cx, cy + CAPTURE_RING_START + 44, def.common_name, {
+      size: 24,
+      tint: THEME.ink,
+      origin: 0.5,
+    });
+    const hint = pixelText(this.scene, cx, cy + CAPTURE_RING_START + 72, 'TAP WHEN THE RING MEETS THE BAND', {
+      size: 8,
+      tint: THEME.inkMuted,
+      origin: 0.5,
+    });
     this.gfx = this.scene.add.graphics();
     this.objects = [dim, halo, creature, name, hint, this.gfx];
   }
