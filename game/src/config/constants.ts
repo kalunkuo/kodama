@@ -9,7 +9,7 @@ export const SEPARATION_FORCE = 260;
 export const SPATIAL_HASH_CELL = 32; // ≈ 2 tiles (plan §6)
 
 // Swarm
-export const SWARM_CAP = 40;
+export const SWARM_CAP = 60;
 export const SWARM_ANCHOR_TRAIL = 16; // px behind the player
 export const SLOT_BASE_RADIUS = 10;
 export const SLOT_RADIUS_STEP = 2.4;
@@ -40,16 +40,18 @@ export const ZONE_SPAWN_MULT: Record<string, number> = {
   offsite: 1,
 };
 
-// Capture (plan §7): shrinking ring, rarity narrows the hit band
-export const CAPTURE_RANGE = 30; // px — how close the player must be to start
+// Capture (plan §7): shrinking ring, rarity narrows the hit band.
+// Tuned so the reaction window (band_width / RING_START * RING_MS) gives
+// common ~1.2s, uncommon ~0.75s, rare ~0.4s — forgiving but rarity still bites.
+export const CAPTURE_RANGE = 34; // px — how close the player must be to start
 export const CAPTURE_RING_START = 110; // px radius on the UI overlay
-export const CAPTURE_RING_MS = 1600; // shrink duration
+export const CAPTURE_RING_MS = 2200; // shrink duration
 export const CAPTURE_BAND: Record<string, { inner: number; outer: number }> = {
-  common: { inner: 26, outer: 62 },
-  uncommon: { inner: 30, outer: 52 },
-  rare: { inner: 32, outer: 44 },
+  common: { inner: 18, outer: 78 },
+  uncommon: { inner: 24, outer: 62 },
+  rare: { inner: 30, outer: 50 },
 };
-export const DISTRACT_BAND_BONUS = 14; // a thrown creature widens the band once
+export const DISTRACT_BAND_BONUS = 16; // a thrown creature widens the band once
 
 // Tile classes, indexed by the gid painted in data/ramble_map.json
 export const TILE_CLASSES = ['lawn', 'water', 'woodland', 'path', 'boundary', 'rock'] as const;
