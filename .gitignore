@@ -4,3 +4,4 @@ dist/
 
 pipeline/.venv/
 pipeline/.cache/
+__pycache__/

@@ -5,10 +5,11 @@ import { Park } from './scenes/Park';
 import { UI } from './scenes/UI';
 import { Dex } from './scenes/Dex';
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#1a1f16',
+  pixelArt: true,
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -17,3 +18,6 @@ new Phaser.Game({
   },
   scene: [Boot, Preload, Park, UI, Dex],
 });
+
+// handy for on-device debugging (eruda / devtools)
+(window as unknown as { game: Phaser.Game }).game = game;

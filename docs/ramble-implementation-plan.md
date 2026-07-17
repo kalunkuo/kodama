@@ -2,7 +2,7 @@
 
 A Pikmin/Pokémon-style creature-herding and collection game set in real parks, starting with the Ramble in Central Park. Browser-based, mobile-first, built on real ecological data.
 
-**Status:** planning complete, ready for M0.
+**Status:** M0–M5 implemented (playable v1). Remaining from §11: hosting (Cloudflare Pages) + real on-site GPS field test. Art is procedural placeholder pending a CC0 pack reskin (§9).
 **Last updated:** 2026-07-16
 
 ---

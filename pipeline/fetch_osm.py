@@ -13,6 +13,8 @@ OVERPASS_QL = """
 (
   way["highway"~"path|footway|steps"]({sw_lat},{sw_lon},{ne_lat},{ne_lon});
   way["natural"="water"]({sw_lat},{sw_lon},{ne_lat},{ne_lon});
+  relation["natural"="water"]({sw_lat},{sw_lon},{ne_lat},{ne_lon});
+  relation["natural"="wood"]({sw_lat},{sw_lon},{ne_lat},{ne_lon});
   way["natural"="wood"]({sw_lat},{sw_lon},{ne_lat},{ne_lon});
   way["landuse"="grass"]({sw_lat},{sw_lon},{ne_lat},{ne_lon});
   way["leisure"~"park|garden"]({sw_lat},{sw_lon},{ne_lat},{ne_lon});

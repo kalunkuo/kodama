@@ -9,6 +9,7 @@ import os
 import sys
 
 from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import linemerge, polygonize, unary_union
 from shapely.prepared import prep
 
 import config
@@ -90,6 +91,35 @@ def element_to_geometry(element, shape_kind):
             return None
 
 
+def relation_to_geometry(element):
+    """Assemble a multipolygon relation (e.g. the Lake) from its member way geometries.
+
+    OSM models large water bodies as relations whose outer boundary is split
+    across several ways; `out geom` gives each member's coordinates, and
+    polygonize stitches the merged ring segments back into polygons.
+    """
+    outers, inners = [], []
+    for member in element.get("members", []):
+        if member.get("type") != "way" or not member.get("geometry"):
+            continue
+        coords = [project(pt["lat"], pt["lon"]) for pt in member["geometry"] if pt]
+        if len(coords) < 2:
+            continue
+        line = LineString(coords)
+        (inners if member.get("role") == "inner" else outers).append(line)
+    if not outers:
+        return None
+    try:
+        geom = unary_union(list(polygonize(linemerge(unary_union(outers)))))
+        if inners:
+            inner_polys = list(polygonize(linemerge(unary_union(inners))))
+            if inner_polys:
+                geom = geom.difference(unary_union(inner_polys))
+        return geom if not geom.is_empty else None
+    except Exception:
+        return None
+
+
 def build_grid_bounds():
     sw_x, sw_y = project(config.BBOX["sw_lat"], config.BBOX["sw_lon"])
     ne_x, ne_y = project(config.BBOX["ne_lat"], config.BBOX["ne_lon"])
@@ -128,16 +158,19 @@ def rasterize(elements):
 
     by_class = {"boundary": [], "lawn": [], "woodland": [], "path": [], "water": []}
     for element in elements:
-        if element.get("type") != "way":
-            continue
         tags = element.get("tags", {})
         tile_class, shape_kind = classify(tags)
         if tile_class is None:
             continue
-        if tile_class == "boundary":
-            geom = element_to_geometry(element, "boundary_line")
+        if element.get("type") == "relation":
+            geom = relation_to_geometry(element)
+        elif element.get("type") == "way":
+            if tile_class == "boundary":
+                geom = element_to_geometry(element, "boundary_line")
+            else:
+                geom = element_to_geometry(element, shape_kind)
         else:
-            geom = element_to_geometry(element, shape_kind)
+            continue
         if geom is not None and not geom.is_empty:
             by_class[tile_class].append(geom)
 

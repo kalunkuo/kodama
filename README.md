@@ -4,6 +4,10 @@
 
 A Pikmin/Pokémon-style creature-herding browser game set in Central Park's Ramble. Built on Phaser 4 + TypeScript + Vite.
 
-**Status:** M0 — scaffold only. `game/` boots a blank Phaser scene (Boot → Preload → Park) with a placeholder background and "Ramble — M0" text. No tilemap, movement, or gameplay systems yet.
+**Status:** M0–M5 complete — playable v1. Real OSM tilemap of the Ramble (paths, woodland, lawns, the Lake), tap-to-move with A*, a 40-creature steering swarm, a real-calendar spawner driven by iNaturalist week-of-year histograms, shrinking-ring capture, a field-guide dex with seasonality sparklines, whistle/throw/carry verbs, localStorage persistence, GPS park mode with on-site spawn bonuses (dusk raccoon is Ramble-only), and offline-capable PWA build.
 
-See `game/` for the app. Run `npm install && npm run dev` inside `game/` to start the dev server.
+See `game/` for the app. Run `npm install && npm run dev` inside `game/` to start the dev server (`npm run build` needs Node 18+; on Node 18 the build script auto-enables `--experimental-global-webcrypto`).
+
+Debug URL params for testing seasonality without waiting for the calendar: `?week=18&period=dusk&zone=ramble`.
+
+All art and audio are procedurally generated (no assets to license). Attribution: see [CREDITS.md](CREDITS.md).
