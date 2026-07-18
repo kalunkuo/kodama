@@ -5,24 +5,28 @@ import {
   SLOT_GOLDEN_ANGLE,
   SLOT_RADIUS_STEP,
   SPATIAL_HASH_CELL,
-  SWARM_CAP,
+  SWARM_CAP_MAX,
 } from '../config/constants';
 import { Creature } from '../entities/Creature';
 import { Player } from '../entities/Player';
+import { SWARM_CAP_BY_LEVEL } from './Progression';
 import { WorldGrid } from './WorldGrid';
 
 /**
  * Steering, not physics (plan §6): each member seeks a fixed formation slot
  * behind the leader, plus separation from neighbors via a spatial hash.
+ * The formation supports SWARM_CAP_MAX slots; the *effective* cap grows
+ * with Caretaker Level (Progression.ts) via setCap().
  */
 export class Swarm {
   readonly members: Creature[] = [];
+  cap = SWARM_CAP_BY_LEVEL[0];
   private slotOffsets: { x: number; y: number }[] = [];
   private hash = new Map<number, Creature[]>();
 
   constructor() {
     // golden-angle spiral → organic blob instead of a marching grid
-    for (let i = 0; i < SWARM_CAP; i++) {
+    for (let i = 0; i < SWARM_CAP_MAX; i++) {
       const r = SLOT_BASE_RADIUS + SLOT_RADIUS_STEP * Math.sqrt(i) * 2.2;
       const a = i * SLOT_GOLDEN_ANGLE;
       this.slotOffsets.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
@@ -34,7 +38,11 @@ export class Swarm {
   }
 
   get full(): boolean {
-    return this.members.length >= SWARM_CAP;
+    return this.members.length >= this.cap;
+  }
+
+  setCap(n: number): void {
+    this.cap = Math.max(1, Math.min(SWARM_CAP_MAX, n));
   }
 
   add(creature: Creature): boolean {
@@ -53,7 +61,7 @@ export class Swarm {
 
   private firstFreeSlot(): number {
     const used = new Set(this.members.map((m) => m.slot));
-    for (let s = 0; s < SWARM_CAP; s++) if (!used.has(s)) return s;
+    for (let s = 0; s < SWARM_CAP_MAX; s++) if (!used.has(s)) return s;
     return 0;
   }
 
@@ -89,7 +97,7 @@ export class Swarm {
     const anchor = player.anchor();
     for (const m of this.members) {
       if (m.state !== 'swarm') continue;
-      const slot = this.slotOffsets[m.slot % SWARM_CAP];
+      const slot = this.slotOffsets[m.slot % SWARM_CAP_MAX];
       const { sx, sy } = this.separation(m);
       m.steerToward(anchor.x + slot.x, anchor.y + slot.y, dtMs, grid, sx, sy);
     }

@@ -8,8 +8,9 @@ export const SEPARATION_RADIUS = 12; // px
 export const SEPARATION_FORCE = 260;
 export const SPATIAL_HASH_CELL = 32; // ≈ 2 tiles (plan §6)
 
-// Swarm
-export const SWARM_CAP = 60;
+// Swarm — SWARM_CAP_MAX is the absolute ceiling (level 6, see Progression.ts);
+// the *effective* cap grows with Caretaker Level via Swarm.setCap().
+export const SWARM_CAP_MAX = 60;
 export const SWARM_ANCHOR_TRAIL = 16; // px behind the player
 export const SLOT_BASE_RADIUS = 10;
 export const SLOT_RADIUS_STEP = 2.4;

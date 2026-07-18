@@ -19,6 +19,16 @@ A Pikmin/Pokémon-style creature-herding browser game set in Central Park's Ramb
 
 Spawns follow the real calendar and time of day — a species with a spring peak will be rare in fall, and dusk/night species won't appear at noon.
 
+### Caretaker Level
+
+Catching a species for the first time and delivering acorns to the base flag both earn XP, shown as a bar under the swarm counter. Leveling up pays out on every axis at once:
+
+- **Swarm cap** grows (15 → 24 → 33 → 42 → 51 → 60).
+- **New species tiers unlock** — commons first, then woodland birds, then water birds, then the rares, then the dusk raccoon.
+- A well-fed Ramble's reputation eventually travels: at max level, the onsite-only raccoon can turn up anywhere, not just in-park.
+
+See `game/src/systems/Progression.ts` for the exact thresholds and unlock tiers.
+
 ### Resetting your save
 
 Progress (dex, swarm roster, offerings) lives in your browser's `localStorage` under the key `ramble_save_v1`. To reset:

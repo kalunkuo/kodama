@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { SWARM_CAP } from '../config/constants';
 import { audio } from '../systems/Audio';
 import { CaptureGame, CaptureRequest } from '../systems/Capture';
+import { xpProgress } from '../systems/Progression';
 import { PixelButton, THEME, pixelBox, pixelText, setPixelText, safeInsets, Insets } from '../ui/kit';
 import type { Park } from './Park';
 
@@ -15,6 +15,14 @@ export class UI extends Phaser.Scene {
   private zoneBox!: Phaser.GameObjects.Container;
   private zoneBg!: Phaser.GameObjects.Graphics;
   private zoneText!: Phaser.GameObjects.BitmapText;
+  private levelBox!: Phaser.GameObjects.Container;
+  private levelBg!: Phaser.GameObjects.Graphics;
+  private levelText!: Phaser.GameObjects.BitmapText;
+  private xpText!: Phaser.GameObjects.BitmapText;
+  private levelUpBanner: Phaser.GameObjects.Container | null = null;
+  private lastLevelWidth = 0;
+  private readonly LEVEL_BAR_W = 96;
+  private readonly LEVEL_BAR_H = 8;
   private dexBtn!: PixelButton;
   private parkBtn!: PixelButton;
   private infoBtn!: PixelButton;
@@ -41,6 +49,7 @@ export class UI extends Phaser.Scene {
 
     this.buildStat();
     this.buildZone();
+    this.buildLevel();
 
     this.dexBtn = new PixelButton(this, 0, 0, 'DEX', () => {
       audio.unlock();
@@ -78,6 +87,7 @@ export class UI extends Phaser.Scene {
       });
     });
     this.game.events.on('toast', (msg: string) => this.toast(msg));
+    this.game.events.on('levelup', (lvl: number) => this.showLevelUp(lvl));
 
     this.time.delayedCall(7000, () => this.tweens.add({ targets: this.hint, alpha: 0, duration: 800 }));
   }
@@ -127,11 +137,78 @@ export class UI extends Phaser.Scene {
     this.zoneText.setPosition(9, 7);
   }
 
+  private buildLevel(): void {
+    this.levelBg = this.add.graphics();
+    this.levelText = pixelText(this, 9, 7, 'LV.1', { size: 16, tint: THEME.gold });
+    this.xpText = pixelText(this, 9, 32, '', { size: 8, tint: THEME.inkMuted });
+    this.levelBox = this.add.container(0, 0, [this.levelBg, this.levelText, this.xpText]);
+    this.redrawLevel(0);
+  }
+
+  private redrawLevel(xp: number): void {
+    const prog = xpProgress(xp);
+    setPixelText(this.levelText, `LV.${prog.level}`);
+    const barX = 9;
+    const barY = 27;
+    const w = Math.max(this.levelText.width, this.LEVEL_BAR_W) + 18;
+    const h = barY + this.LEVEL_BAR_H + 18;
+    if (w !== this.lastLevelWidth) {
+      this.lastLevelWidth = w;
+      this.levelBg.clear();
+      pixelBox(this.levelBg, 0, 0, w, h);
+    }
+    // wipe just the bar area each frame without redrawing the whole box border
+    this.levelBg.fillStyle(THEME.boxFillDark, 1).fillRect(barX, barY, this.LEVEL_BAR_W, this.LEVEL_BAR_H);
+    const pct = prog.maxed ? 1 : prog.span > 0 ? prog.current / prog.span : 0;
+    this.levelBg.fillStyle(THEME.gold, 1).fillRect(barX, barY, Math.round(this.LEVEL_BAR_W * pct), this.LEVEL_BAR_H);
+    this.levelBg.lineStyle(1, THEME.boxLight, 0.7);
+    this.levelBg.strokeRect(barX + 0.5, barY + 0.5, this.LEVEL_BAR_W - 1, this.LEVEL_BAR_H - 1);
+    setPixelText(this.xpText, prog.maxed ? 'CARETAKER MAX' : `${prog.current}/${prog.span} XP`);
+    this.xpText.setPosition(barX, barY + this.LEVEL_BAR_H + 4);
+  }
+
+  private showLevelUp(level: number): void {
+    const { width, height } = this.scale;
+    const flash = this.add.rectangle(0, 0, width, height, THEME.gold, 0.28).setOrigin(0).setDepth(59);
+    this.tweens.add({ targets: flash, alpha: 0, duration: 320, onComplete: () => flash.destroy() });
+
+    if (this.levelUpBanner) {
+      this.levelUpBanner.destroy();
+      this.levelUpBanner = null;
+    }
+    const title = pixelText(this, width / 2, height / 2 - 30, 'LEVEL UP!', { size: 40, tint: THEME.gold, origin: 0.5 });
+    const sub = pixelText(this, width / 2, height / 2 + 18, `CARETAKER LV.${level}`, { size: 16, tint: THEME.ink, origin: 0.5 });
+    const container = this.add.container(0, 0, [title, sub]).setDepth(60).setAlpha(0).setScale(0.7);
+    this.levelUpBanner = container;
+    this.tweens.add({
+      targets: container,
+      alpha: 1,
+      scale: 1,
+      duration: 220,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(1500, () => {
+          this.tweens.add({
+            targets: container,
+            alpha: 0,
+            duration: 350,
+            onComplete: () => {
+              container.destroy();
+              if (this.levelUpBanner === container) this.levelUpBanner = null;
+            },
+          });
+        });
+      },
+    });
+    audio.chime();
+  }
+
   private layout(): void {
     const w = this.scale.width;
     const { top, left, right, bottom } = this.insets;
     this.statChildren.setPosition(left, top);
     this.zoneBox.setPosition(left, top + 38);
+    this.levelBox.setPosition(left, top + 72);
 
     this.dexBtn.setX(w - right - this.dexBtn.width).setY(top);
     this.parkBtn.setX(w - right - this.parkBtn.width).setY(top + 42);
@@ -233,9 +310,10 @@ export class UI extends Phaser.Scene {
     this.capture.update(delta);
     const park = this.park();
     if (!park.swarm) return;
-    setPixelText(this.swarmText, `${park.swarm.size}/${SWARM_CAP}`);
+    setPixelText(this.swarmText, `${park.swarm.size}/${park.swarm.cap}`);
     setPixelText(this.offerText, `${park.save.data.offerings}`);
     this.redrawStat();
+    this.redrawLevel(park.save.data.xp);
 
     const loc = park.location;
     if (loc.enabled) {

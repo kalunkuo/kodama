@@ -17,6 +17,7 @@ import { Creature } from '../entities/Creature';
 import { Player } from '../entities/Player';
 import { audio } from '../systems/Audio';
 import { LocationSystem } from '../systems/Location';
+import { levelForXp, swarmCapForLevel, XP_FIRST_CATCH, XP_OFFERING, XP_RECATCH } from '../systems/Progression';
 import { Save } from '../systems/Save';
 import { Spawner } from '../systems/Spawner';
 import { Swarm } from '../systems/Swarm';
@@ -65,11 +66,16 @@ export class Park extends Phaser.Scene {
 
     this.player = new Player(this, this.grid, start.x, start.y);
     this.swarm = new Swarm();
+    this.swarm.setCap(swarmCapForLevel(this.currentLevel()));
     const species = this.registry.get('species') as SpeciesDef[];
-    this.spawner = new Spawner(this, this.grid, species, this.location, () => ({
-      x: this.player.x,
-      y: this.player.y,
-    }));
+    this.spawner = new Spawner(
+      this,
+      this.grid,
+      species,
+      this.location,
+      () => ({ x: this.player.x, y: this.player.y }),
+      () => this.currentLevel()
+    );
 
     // restore the saved roster around the player
     for (const id of this.save.data.roster) {
@@ -312,17 +318,17 @@ export class Park extends Phaser.Scene {
     this.captureActive = false;
     creature.distracted = false;
     if (success) {
+      const isNew = this.save.isNewSpecies(creature.def.id);
+      const xp = isNew ? (XP_FIRST_CATCH[creature.def.rarity] ?? XP_RECATCH) : XP_RECATCH;
       this.spawner.remove(creature);
-      if (this.swarm.add(creature)) {
-        audio.chime();
-        this.save.recordCatch(creature.def.id, this.location.zone === 'ramble');
-        this.save.setRoster(this.swarm.members.map((m) => m.def.id));
-        this.toast(`${creature.def.common_name} joined your swarm!`);
-      } else {
-        this.save.recordCatch(creature.def.id, this.location.zone === 'ramble');
-        this.toast(`${creature.def.common_name} recorded — swarm is full`);
-        creature.destroy();
-      }
+      this.save.recordCatch(creature.def.id, this.location.zone === 'ramble');
+      const joined = this.swarm.add(creature);
+      if (joined) this.save.setRoster(this.swarm.members.map((m) => m.def.id));
+      else creature.destroy();
+      this.grantXp(xp);
+      audio.chime();
+      const status = joined ? 'joined your swarm!' : 'recorded — swarm is full';
+      this.toast(isNew ? `NEW SPECIES! ${creature.def.common_name} ${status} (+${xp} XP)` : `${creature.def.common_name} ${status} (+${xp} XP)`);
       this.game.events.emit('dex:changed');
     } else {
       audio.fail();
@@ -356,6 +362,20 @@ export class Park extends Phaser.Scene {
     this.game.events.emit('toast', msg);
   }
 
+  currentLevel(): number {
+    return levelForXp(this.save.data.xp);
+  }
+
+  /** Single entry point for every XP source: applies it, grows the swarm cap, and fires the level-up banner. */
+  private grantXp(amount: number): void {
+    const grant = this.save.addXp(amount);
+    this.swarm.setCap(swarmCapForLevel(grant.newLevel));
+    if (grant.leveledUp) {
+      audio.chime();
+      this.game.events.emit('levelup', grant.newLevel);
+    }
+  }
+
   update(_time: number, rawDt: number): void {
     // clamp so a long frame (tab hidden, GC) never teleports entities
     const dtMs = Math.min(rawDt, 64);
@@ -386,8 +406,9 @@ export class Park extends Phaser.Scene {
         o.destroy();
         this.save.data.offerings++;
         this.save.persist();
+        this.grantXp(XP_OFFERING);
         audio.chime();
-        this.toast(`Offering delivered! (${this.save.data.offerings} total)`);
+        this.toast(`Offering delivered! (${this.save.data.offerings} total, +${XP_OFFERING} XP)`);
       }
     }
 

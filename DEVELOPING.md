@@ -49,8 +49,9 @@ If you upgrade the toolchain to Node 20+, both of these can be removed — they'
 - **No art assets.** Every sprite, tile, icon, and UI glyph is generated in code at boot (`Preload.ts`, `ui/kit.ts`) — there's nothing to license and nothing to load over the network beyond the two `data/*.json` files.
 - **`constants.ts`** is the single source of truth for tunables: spawn timing, rarity multipliers, swarm cap, capture band widths, whistle/throw ranges, etc. Prefer changing a constant over hardcoding a new magic number.
 - **`WorldGrid`** does triple duty per the design doc: render layer, walkability layer, and habitat layer (derives `water_edge` from tiles adjacent to `water`), plus a hand-rolled 8-directional A*.
-- **`Spawner`** rolls species by real week-of-year (from the iNat histogram in `species.json`) × time-of-day × rarity × GPS zone multiplier. `currentWeek()`/`currentPeriod()` read the real clock unless overridden by the `week`/`period` URL params (see README).
-- **`Save`** is a single versioned `localStorage` blob (`ramble_save_v1`) — dex entries, roster, offerings. Bump the version key if you change the shape.
+- **`Spawner`** rolls species by real week-of-year (from the iNat histogram in `species.json`) × time-of-day × rarity × GPS zone multiplier × Caretaker Level gating/bonus (`Progression.ts`). `currentWeek()`/`currentPeriod()` read the real clock unless overridden by the `week`/`period` URL params (see README).
+- **`Progression.ts`** is the leveling spine: XP thresholds, per-species unlock levels, swarm-cap-by-level, and the "well-fed" rarity/onsite-bypass bonus. Level is *derived* from `Save.data.xp` (`levelForXp()`) rather than stored separately, so there's one source of truth — never write a `level` field directly.
+- **`Save`** is a single versioned `localStorage` blob (`ramble_save_v1`) — dex entries, roster, offerings, xp. Bump `version` in `Save.ts` if you change the shape (old saves are discarded rather than migrated).
 
 ## Debug tooling
 

@@ -11,6 +11,7 @@ import {
 import { SpeciesDef } from '../config/species-sprites';
 import { Creature } from '../entities/Creature';
 import { LocationSystem } from './Location';
+import { isSpeciesUnlocked, rarityLevelBonus, WELL_FED_OFFSITE_LEVEL } from './Progression';
 import { WorldGrid } from './WorldGrid';
 
 export type TimePeriod = 'dawn' | 'day' | 'dusk' | 'night';
@@ -41,6 +42,7 @@ export class Spawner {
   private species: SpeciesDef[];
   private location: LocationSystem;
   private getPlayerPos: () => { x: number; y: number };
+  private getLevel: () => number;
   // debug overrides so seasonality is testable without waiting for May
   private weekOverride: number | null = null;
   private periodOverride: TimePeriod | null = null;
@@ -50,13 +52,15 @@ export class Spawner {
     grid: WorldGrid,
     species: SpeciesDef[],
     location: LocationSystem,
-    getPlayerPos: () => { x: number; y: number }
+    getPlayerPos: () => { x: number; y: number },
+    getLevel: () => number
   ) {
     this.scene = scene;
     this.grid = grid;
     this.species = species;
     this.location = location;
     this.getPlayerPos = getPlayerPos;
+    this.getLevel = getLevel;
 
     const params = new URLSearchParams(window.location.search);
     const w = params.get('week');
@@ -115,11 +119,16 @@ export class Spawner {
   private rollSpecies(): SpeciesDef | null {
     const week = this.week;
     const period = this.period;
+    const level = this.getLevel();
     const candidates: { def: SpeciesDef; w: number }[] = [];
     for (const def of this.species) {
       if (!def.time_of_day.includes(period)) continue;
-      if (def.onsite_only && this.location.zone !== 'ramble') continue;
-      const w = def.spawn_weight_by_week[week] * (RARITY_SPAWN_MULT[def.rarity] ?? 1);
+      if (!isSpeciesUnlocked(def.id, level)) continue;
+      // onsite-only species need the real zone, unless the Ramble is well-fed
+      // enough (Progression.ts) that word has spread beyond the park.
+      if (def.onsite_only && this.location.zone !== 'ramble' && level < WELL_FED_OFFSITE_LEVEL) continue;
+      const w =
+        def.spawn_weight_by_week[week] * (RARITY_SPAWN_MULT[def.rarity] ?? 1) * rarityLevelBonus(def.rarity, level);
       if (w > 0) candidates.push({ def, w });
     }
     if (candidates.length === 0) return null;
