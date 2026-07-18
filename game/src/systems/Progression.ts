@@ -17,6 +17,7 @@ export const SWARM_CAP_BY_LEVEL = [15, 24, 33, 42, 51, 60];
 export const XP_FIRST_CATCH: Record<string, number> = { common: 15, uncommon: 35, rare: 90 };
 export const XP_RECATCH = 4;
 export const XP_OFFERING = 18;
+export const XP_BRIDGE = 60; // finishing a bridge is a bigger, rarer payoff than one acorn
 
 // species -> minimum Caretaker Level before it's eligible to spawn at all.
 // Mirrors the plan's curated tiers: commons -> woodland uncommons -> water

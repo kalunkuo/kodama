@@ -126,6 +126,17 @@ const SPRITES: Record<string, { w: number; h: number; px: Px[] }> = {
       [0, 16, 14, 2, 0x6e6452], // ground
     ],
   },
+  bridge_post: {
+    w: 12,
+    h: 15,
+    px: [
+      [5, 0, 2, 12, 0x8a6a42], // post
+      [1, 4, 10, 2, 0x6e5232], // crossbeam
+      [2, 5, 8, 1, 0xd6ac72], // crossbeam highlight
+      [0, 12, 12, 3, 0x6e5232], // base plank
+      [1, 12, 10, 1, 0xd6ac72],
+    ],
+  },
 };
 
 export class Preload extends Phaser.Scene {

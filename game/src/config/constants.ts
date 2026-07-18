@@ -54,6 +54,17 @@ export const CAPTURE_BAND: Record<string, { inner: number; outer: number }> = {
 };
 export const DISTRACT_BAND_BONUS = 16; // a thrown creature widens the band once
 
+// Capture tension (idea 3): a rushed approach narrows the band, a catch
+// streak widens it back. Same minigame, but how you play changes the odds.
+export const ALERT_RADIUS = 70; // px — player movement inside this spooks the target
+export const ALERT_RISE_PER_S = 0.9; // 0->1 in ~1.1s of being rushed at close range
+export const ALERT_DECAY_PER_S = 0.6; // per second once the player backs off
+export const ALERT_BAND_PENALTY = 16; // px shaved off the band at full alertness
+export const STREAK_BAND_BONUS = 3; // px added per consecutive catch
+export const STREAK_CAP = 5; // streak stops paying out past this many in a row
+export const FREEZE_CHANCE = 0.45; // woodland species: chance to freeze instead of flee on a miss
+export const FREEZE_MS = 1800;
+
 // Tile classes, indexed by the gid painted in data/ramble_map.json
 export const TILE_CLASSES = ['lawn', 'water', 'woodland', 'path', 'boundary', 'rock'] as const;
 export type TileClass = (typeof TILE_CLASSES)[number];

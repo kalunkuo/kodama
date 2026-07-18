@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {
   CAPTURE_RANGE,
+  FREEZE_CHANCE,
   TILE_COLORS,
   TILE_SIZE,
   THROW_ARC_HEIGHT,
@@ -12,12 +13,21 @@ import {
   TIME_TINT,
 } from '../config/constants';
 import { SpeciesDef } from '../config/species-sprites';
+import { BridgeSite } from '../entities/BridgeSite';
 import { CarryObject } from '../entities/CarryObject';
 import { Creature } from '../entities/Creature';
 import { Player } from '../entities/Player';
 import { audio } from '../systems/Audio';
+import { buildBridge, findPocketsAndBridges } from '../systems/Bridges';
 import { LocationSystem } from '../systems/Location';
-import { levelForXp, swarmCapForLevel, XP_FIRST_CATCH, XP_OFFERING, XP_RECATCH } from '../systems/Progression';
+import {
+  levelForXp,
+  swarmCapForLevel,
+  XP_BRIDGE,
+  XP_FIRST_CATCH,
+  XP_OFFERING,
+  XP_RECATCH,
+} from '../systems/Progression';
 import { Save } from '../systems/Save';
 import { Spawner } from '../systems/Spawner';
 import { Swarm } from '../systems/Swarm';
@@ -34,16 +44,20 @@ export class Park extends Phaser.Scene {
   save!: Save;
   location!: LocationSystem;
   carryObjects: CarryObject[] = [];
+  bridgeSites: BridgeSite[] = [];
   private base!: { x: number; y: number };
   private pursuit: Creature | null = null;
   private pursuitGoal = { x: 0, y: 0 };
   private captureActive = false;
+  private streak = 0; // consecutive successful captures (idea 3)
   // whistle state (press-hold, plan §6)
   private whistling = false;
   private whistleRadius = 0;
   private whistleGfx!: Phaser.GameObjects.Graphics;
   private ambient!: Phaser.GameObjects.Rectangle;
   private ambientPeriod = '';
+  private groundTex!: Phaser.Textures.CanvasTexture;
+  private groundCtx!: CanvasRenderingContext2D;
 
   constructor() {
     super('Park');
@@ -63,6 +77,13 @@ export class Park extends Phaser.Scene {
     )!;
     this.base = this.grid.toWorld(start.x, start.y);
     this.add.image(this.base.x, this.base.y - 6, 'flag').setDepth(this.base.y - 1);
+
+    // idea 2: far-shore pockets found by real connectivity analysis (Bridges.ts)
+    // start locked — no spawns, and a BridgeSite marks where to build across.
+    for (const bridge of findPocketsAndBridges(this.grid, start)) {
+      for (const t of bridge.pocketTiles) this.grid.setReachable(t.x, t.y, false);
+      this.bridgeSites.push(new BridgeSite(this, bridge));
+    }
 
     this.player = new Player(this, this.grid, start.x, start.y);
     this.swarm = new Swarm();
@@ -160,6 +181,22 @@ export class Park extends Phaser.Scene {
     canvasTex.refresh();
     canvasTex.setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.add.image(0, 0, 'ground').setOrigin(0).setScale(TILE_SIZE).setDepth(-1);
+    this.groundTex = canvasTex;
+    this.groundCtx = ctx;
+  }
+
+  /** Recolors specific tiles on the ground canvas — used once a bridge finishes building. */
+  private repaintGroundTiles(tiles: { x: number; y: number }[]): void {
+    for (const t of tiles) {
+      const color = TILE_COLORS[this.grid.classAt(t.x, t.y)];
+      const jitter = 1 + ((((t.x * 73856093) ^ (t.y * 19349663)) % 13) - 6) / 100;
+      const r = Math.min(255, Math.round(((color >> 16) & 0xff) * jitter));
+      const g = Math.min(255, Math.round(((color >> 8) & 0xff) * jitter));
+      const b = Math.min(255, Math.round((color & 0xff) * jitter));
+      this.groundCtx.fillStyle = `rgb(${r},${g},${b})`;
+      this.groundCtx.fillRect(t.x, t.y, 1, 1);
+    }
+    this.groundTex.refresh();
   }
 
   private handleTap(wx: number, wy: number): void {
@@ -180,7 +217,19 @@ export class Park extends Phaser.Scene {
       }
       return;
     }
-    // 2. a carry object in throw range → throw a member at it
+    // 2. a bridge site in throw range → throw a member at it
+    const bridge = this.bridgeSiteAt(wx, wy, 22);
+    if (bridge && !bridge.built) {
+      const dist = Math.hypot(bridge.x - this.player.x, bridge.y - this.player.y);
+      if (dist <= THROW_RANGE) {
+        const helper = this.swarm.nearestFollower(this.player.x, this.player.y);
+        if (helper) {
+          this.throwCreature(helper, bridge.x, bridge.y);
+          return;
+        }
+      }
+    }
+    // 3. a carry object in throw range → throw a member at it
     const obj = this.carryObjectAt(wx, wy, 22);
     if (obj && !obj.delivered) {
       const dist = Math.hypot(obj.x - this.player.x, obj.y - this.player.y);
@@ -192,9 +241,16 @@ export class Park extends Phaser.Scene {
         }
       }
     }
-    // 3. ground → move
+    // 4. ground → move
     this.pursuit = null;
     this.player.setDestination(wx, wy);
+  }
+
+  private bridgeSiteAt(wx: number, wy: number, radius: number): BridgeSite | null {
+    for (const b of this.bridgeSites) {
+      if (!b.built && Math.hypot(b.x - wx, b.y - wy) < radius) return b;
+    }
+    return null;
   }
 
   private wildAt(wx: number, wy: number, radius: number): Creature | null {
@@ -241,6 +297,12 @@ export class Park extends Phaser.Scene {
   private landThrow(creature: Creature, tx: number, ty: number): void {
     if (creature.state !== 'thrown') return; // whistled back mid-air
     // auto-assign to the nearest task in a small radius (plan §6)
+    const bridge = this.bridgeSiteAt(tx, ty, 18);
+    if (bridge && !bridge.built && bridge.attached.length < bridge.bridge.required) {
+      bridge.attach(creature);
+      this.toast(`${bridge.bridge.name}: ${bridge.attached.length}/${bridge.bridge.required}`);
+      return;
+    }
     const obj = this.carryObjectAt(tx, ty, 18);
     if (obj && !obj.delivered && obj.attached.length < obj.required) {
       obj.attach(creature, this.grid);
@@ -281,6 +343,7 @@ export class Park extends Phaser.Scene {
       if (m.state !== 'working' && m.state !== 'thrown') continue;
       if (Math.hypot(m.x - this.player.x, m.y - this.player.y) > this.whistleRadius) continue;
       for (const o of this.carryObjects) o.detach(m);
+      for (const b of this.bridgeSites) b.detach(m);
       m.state = 'swarm';
     }
   }
@@ -310,6 +373,8 @@ export class Park extends Phaser.Scene {
     this.game.events.emit('capture:start', {
       speciesDef: creature.def,
       distracted: creature.distracted,
+      alertness: creature.alertness,
+      streak: this.streak,
       onResult: (success: boolean) => this.resolveCapture(creature, success),
     });
   }
@@ -318,6 +383,7 @@ export class Park extends Phaser.Scene {
     this.captureActive = false;
     creature.distracted = false;
     if (success) {
+      this.streak++;
       const isNew = this.save.isNewSpecies(creature.def.id);
       const xp = isNew ? (XP_FIRST_CATCH[creature.def.rarity] ?? XP_RECATCH) : XP_RECATCH;
       this.spawner.remove(creature);
@@ -328,18 +394,32 @@ export class Park extends Phaser.Scene {
       this.grantXp(xp);
       audio.chime();
       const status = joined ? 'joined your swarm!' : 'recorded — swarm is full';
-      this.toast(isNew ? `NEW SPECIES! ${creature.def.common_name} ${status} (+${xp} XP)` : `${creature.def.common_name} ${status} (+${xp} XP)`);
+      const streakTag = this.streak >= 2 ? `  STREAK x${this.streak}` : '';
+      this.toast(
+        (isNew ? `NEW SPECIES! ${creature.def.common_name} ${status}` : `${creature.def.common_name} ${status}`) +
+          ` (+${xp} XP)${streakTag}`
+      );
       this.game.events.emit('dex:changed');
     } else {
       audio.fail();
+      this.streak = 0;
       creature.missCount++;
       if (creature.missCount >= 2) {
         this.spawner.remove(creature);
         creature.destroy();
         this.toast('It slipped away…');
       } else {
-        creature.flee(this.player.x, this.player.y, this.time.now);
-        this.toast('Missed! It spooked.');
+        // idea 3 habitat modifiers: water species dive away, woodland species
+        // sometimes freeze instead — same difficulty on the retry, no re-chase.
+        const tags = creature.def.habitat_tags;
+        if (tags.includes('woodland') && !tags.includes('water') && Math.random() < FREEZE_CHANCE) {
+          creature.freeze(this.time.now);
+          this.toast(`${creature.def.common_name} freezes, watching you.`);
+        } else {
+          creature.flee(this.player.x, this.player.y, this.time.now);
+          const isWater = tags.includes('water') || tags.includes('water_edge');
+          this.toast(isWater ? `${creature.def.common_name} dives away!` : 'Missed! It spooked.');
+        }
       }
     }
   }
@@ -396,7 +476,25 @@ export class Park extends Phaser.Scene {
     this.player.update(dtMs);
     this.swarm.update(dtMs, this.player, this.grid);
     this.spawner.update();
-    for (const c of this.spawner.wild) c.updateWild(dtMs, this.time.now, this.grid);
+    for (const c of this.spawner.wild) {
+      c.updateWild(dtMs, this.time.now, this.grid);
+      if (!this.captureActive) c.updateAlertness(dtMs, this.player.x, this.player.y, this.player.moving, this.time.now);
+    }
+
+    for (let i = this.bridgeSites.length - 1; i >= 0; i--) {
+      const b = this.bridgeSites[i];
+      if (b.update(dtMs)) {
+        for (const m of b.attached) m.state = 'swarm';
+        buildBridge(this.grid, b.bridge);
+        this.repaintGroundTiles(b.bridge.pathTiles);
+        this.bridgeSites.splice(i, 1);
+        b.destroy();
+        this.grantXp(XP_BRIDGE);
+        audio.chime();
+        this.toast(`BRIDGE BUILT! ${b.bridge.name} is open. (+${XP_BRIDGE} XP)`);
+        this.game.events.emit('bridgebuilt', b.bridge.name);
+      }
+    }
 
     for (let i = this.carryObjects.length - 1; i >= 0; i--) {
       const o = this.carryObjects[i];

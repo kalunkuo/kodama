@@ -29,6 +29,18 @@ Catching a species for the first time and delivering acorns to the base flag bot
 
 See `game/src/systems/Progression.ts` for the exact thresholds and unlock tiers.
 
+### Bridges and far-shore areas
+
+The Lake genuinely separates two small landmasses from the mainland in the fetched map data — no artificial gating, that's real geometry. A wooden marker at the water's narrowest crossing to each shows how many swarm members are needed; tap it while a follower is in throw range to send them to build, same as an acorn. Once enough are attached, construction channels for a few seconds and the crossing opens for good — new ground to explore, and new spawns become possible there.
+
+### Capture tension
+
+The shrinking-ring minigame reacts to how you play it:
+
+- **Rushing a bird** (moving fast, up close) raises its alertness, which narrows the hit band — a calm approach is easier than a mad dash.
+- **Consecutive catches** build a streak that widens the band back, rewarding a hot hand.
+- **On a miss**, water species (mallard, pond slider, goose) dive away; woodland species (cardinal, jay, catbird, woodpecker) sometimes freeze in place instead of fleeing — no re-chase needed, but the retry is still a real attempt.
+
 ### Resetting your save
 
 Progress (dex, swarm roster, offerings) lives in your browser's `localStorage` under the key `ramble_save_v1`. To reset:

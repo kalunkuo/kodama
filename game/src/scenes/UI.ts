@@ -88,6 +88,7 @@ export class UI extends Phaser.Scene {
     });
     this.game.events.on('toast', (msg: string) => this.toast(msg));
     this.game.events.on('levelup', (lvl: number) => this.showLevelUp(lvl));
+    this.game.events.on('bridgebuilt', (name: string) => this.showBridgeBuilt(name));
 
     this.time.delayedCall(7000, () => this.tweens.add({ targets: this.hint, alpha: 0, duration: 800 }));
   }
@@ -168,17 +169,26 @@ export class UI extends Phaser.Scene {
   }
 
   private showLevelUp(level: number): void {
+    this.showBanner('LEVEL UP!', `CARETAKER LV.${level}`, THEME.gold);
+  }
+
+  private showBridgeBuilt(name: string): void {
+    this.showBanner('BRIDGE BUILT!', name, THEME.green);
+  }
+
+  /** Shared big-text celebration: a quick color flash + a scale-in/hold/fade banner. */
+  private showBanner(title: string, subtitle: string, color: number): void {
     const { width, height } = this.scale;
-    const flash = this.add.rectangle(0, 0, width, height, THEME.gold, 0.28).setOrigin(0).setDepth(59);
+    const flash = this.add.rectangle(0, 0, width, height, color, 0.28).setOrigin(0).setDepth(59);
     this.tweens.add({ targets: flash, alpha: 0, duration: 320, onComplete: () => flash.destroy() });
 
     if (this.levelUpBanner) {
       this.levelUpBanner.destroy();
       this.levelUpBanner = null;
     }
-    const title = pixelText(this, width / 2, height / 2 - 30, 'LEVEL UP!', { size: 40, tint: THEME.gold, origin: 0.5 });
-    const sub = pixelText(this, width / 2, height / 2 + 18, `CARETAKER LV.${level}`, { size: 16, tint: THEME.ink, origin: 0.5 });
-    const container = this.add.container(0, 0, [title, sub]).setDepth(60).setAlpha(0).setScale(0.7);
+    const titleText = pixelText(this, width / 2, height / 2 - 30, title, { size: 32, tint: color, origin: 0.5 });
+    const sub = pixelText(this, width / 2, height / 2 + 14, subtitle, { size: 16, tint: THEME.ink, origin: 0.5 });
+    const container = this.add.container(0, 0, [titleText, sub]).setDepth(60).setAlpha(0).setScale(0.7);
     this.levelUpBanner = container;
     this.tweens.add({
       targets: container,

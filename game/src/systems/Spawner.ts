@@ -155,10 +155,12 @@ export class Spawner {
 
     for (let attempt = 0; attempt < 40; attempt++) {
       const t = pool[Math.floor(Math.random() * pool.length)];
+      if (!this.grid.isReachable(t.x, t.y)) continue; // no spawning across an unbuilt bridge
       const d = Math.hypot(t.x - pt.x, t.y - pt.y);
       // near enough to encounter, not so near it pops in on screen
       if (d > 6 && d < SPAWN_NEAR_TILES) return t;
     }
-    return pool[Math.floor(Math.random() * pool.length)];
+    const reachablePool = pool.filter((t) => this.grid.isReachable(t.x, t.y));
+    return reachablePool.length > 0 ? reachablePool[Math.floor(Math.random() * reachablePool.length)] : null;
   }
 }

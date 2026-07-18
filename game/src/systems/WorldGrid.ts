@@ -20,6 +20,10 @@ export class WorldGrid {
   readonly height: number;
   readonly classes: Uint8Array; // index into TILE_CLASSES
   readonly walkable: Uint8Array;
+  // spawn-eligible, distinct from walkable: a tile can be physically walkable
+  // (a far-shore pocket, say) but not yet *reachable* until its bridge is
+  // built (Bridges.ts). Defaults to 1 everywhere; Park clears it for pockets.
+  readonly reachable: Uint8Array;
   readonly habitatTiles = new Map<string, { x: number; y: number }[]>();
 
   constructor(map: TiledMap) {
@@ -28,6 +32,7 @@ export class WorldGrid {
     const data = map.layers[0].data;
     this.classes = new Uint8Array(this.width * this.height);
     this.walkable = new Uint8Array(this.width * this.height);
+    this.reachable = new Uint8Array(this.width * this.height).fill(1);
     for (let i = 0; i < data.length; i++) {
       const classIdx = data[i] - 1; // gid is 1-based
       this.classes[i] = classIdx;
@@ -79,6 +84,23 @@ export class WorldGrid {
 
   isWalkable(x: number, y: number): boolean {
     return this.inBounds(x, y) && this.walkable[y * this.width + x] === 1;
+  }
+
+  isReachable(x: number, y: number): boolean {
+    return this.inBounds(x, y) && this.reachable[y * this.width + x] === 1;
+  }
+
+  setReachable(x: number, y: number, val: boolean): void {
+    if (this.inBounds(x, y)) this.reachable[y * this.width + x] = val ? 1 : 0;
+  }
+
+  /** Bridges.ts calls this to turn a strip of water into a walkable, reachable crossing. */
+  setWalkableClass(x: number, y: number, cls: TileClass): void {
+    if (!this.inBounds(x, y)) return;
+    const idx = y * this.width + x;
+    this.classes[idx] = TILE_CLASSES.indexOf(cls);
+    this.walkable[idx] = TILE_WALKABLE[cls] ? 1 : 0;
+    this.reachable[idx] = 1;
   }
 
   isWalkableWorld(wx: number, wy: number): boolean {

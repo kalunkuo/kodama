@@ -1,9 +1,12 @@
 import Phaser from 'phaser';
 import {
+  ALERT_BAND_PENALTY,
   CAPTURE_BAND,
   CAPTURE_RING_MS,
   CAPTURE_RING_START,
   DISTRACT_BAND_BONUS,
+  STREAK_BAND_BONUS,
+  STREAK_CAP,
 } from '../config/constants';
 import { SpeciesDef, tintOf } from '../config/species-sprites';
 import { THEME, pixelText } from '../ui/kit';
@@ -11,6 +14,10 @@ import { THEME, pixelText } from '../ui/kit';
 export interface CaptureRequest {
   speciesDef: SpeciesDef;
   distracted: boolean;
+  /** 0..1, how spooked the creature is from a rushed approach — narrows the band. */
+  alertness?: number;
+  /** consecutive successful catches so far — widens the band, capped. */
+  streak?: number;
   onResult: (success: boolean) => void;
 }
 
@@ -42,6 +49,10 @@ export class CaptureGame {
     const def = request.speciesDef;
     this.band = { ...CAPTURE_BAND[def.rarity] };
     if (request.distracted) this.band.outer += DISTRACT_BAND_BONUS;
+    // idea 3: a rushed approach narrows the band; a catch streak widens it back
+    const alertPenalty = (request.alertness ?? 0) * ALERT_BAND_PENALTY;
+    this.band.outer = Math.max(this.band.inner + 8, this.band.outer - alertPenalty);
+    this.band.outer += Math.min(request.streak ?? 0, STREAK_CAP) * STREAK_BAND_BONUS;
 
     const { width, height } = this.scene.scale;
     const cx = width / 2;
